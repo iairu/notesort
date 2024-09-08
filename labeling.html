@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Classification UI</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --bucket-border: #ccc;
+            --item-bg: #f0f0f0;
+            --sticky-bg: #ffffff;
+            --scrollbar-color: #cccccc;
+            --scrollbar-bg: #f0f0f0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a1a;
+                --text-color: #ffffff;
+                --bucket-border: #444;
+                --item-bg: #2a2a2a;
+                --sticky-bg: #1a1a1a;
+                --scrollbar-color: #444444;
+                --scrollbar-bg: #2a2a2a;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 1em;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        button, textarea, input {
+            font-size: 1em;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--bucket-border);
+        }
+        .container {
+            display: flex;
+            overflow-x: auto;
+        }
+        .bucket {
+            width: 250px;
+            margin-right: 10px;
+            border: 1px solid var(--bucket-border);
+            padding: 10px;
+        }
+        .bucket h2 {
+            margin-top: 0;
+            position: sticky;
+            top: 0;
+            background-color: var(--sticky-bg);
+            z-index: 1;
+            padding: 5px 0;
+        }
+        .item {
+            background-color: var(--item-bg);
+            padding: 5px;
+            margin-bottom: 5px;
+            cursor: move;
+            max-width: 170px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            text-overflow: ellipsis;
+            font-size: 0.6em;
+        }
+        #input-area {
+            margin-bottom: 20px;
+        }
+        #text-input {
+            width: 100%;
+            height: 100px;
+        }
+        .bucket-container {
+            display: flex;
+            flex-direction: row;
+        }
+        #new {
+            flex: 0 0 auto;
+            margin-right: 20px;
+        }
+        #buckets {
+            display: flex;
+            flex-wrap: wrap;
+            overflow-x: hidden;
+            max-height: 100vh;
+        }
+        #buckets > div {
+            flex: 0 0 auto;
+            max-height: 100px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar styles */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar-color) var(--scrollbar-bg);
+        }
+
+        *::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--scrollbar-bg);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-color);
+            border-radius: 20px;
+            border: 3px solid var(--scrollbar-bg);
+        }
+    </style>
+</head>
+<body>
+    <h1>Labeling Interface</h1>
+    <div id="input-area">
+        <textarea id="text-input" placeholder="Enter text chunks here, one per line"></textarea>
+        <button onclick="addItems()">Add Items</button>
+    </div>
+    <div class="bucket-container">
+        <div id="new"></div>
+        <div id="buckets" class="container"></div>
+    </div>
+    <h2>Import and Export</h2>
+    <label for="import-json">Import JSON of Bucket Labels</label>
+    <input type="file" id="import-json" accept="application/json"><br>
+    <button onclick="exportJSON()">Export JSON of Labeled Items</button>
+    <h2>Reset</h2>
+    <button onclick="clearNewContent()">Delete New Items</button><br>
+    <button onclick="clearBucketContent()">Delete Assigned Items</button><br>
+    <button onclick="clearBucketContent(true)">Delete Assigned Items and Buckets</button>
+
+    <script>
+        let buckets = {};
+
+        const storedBuckets = localStorage.getItem('buckets');
+        if (storedBuckets) {
+            buckets = JSON.parse(storedBuckets);
+            for (let [key, value] of Object.entries(buckets)) {
+                createBucket(key, value.name, value.color);
+                value.items.forEach(item => addItemToBucket(key, item));
+            }
+        }
+        
+        document.getElementById('import-json').onchange = function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                document.getElementById('buckets').innerHTML = '';
+                buckets = {};
+                for (let [key, value] of Object.entries(data)) {
+                    createBucket(key, value.label, value.color);
+                    buckets[key] = { name: value.label, color: value.color, items: [] };
+                }
+                localStorage.setItem('buckets', JSON.stringify(buckets));
+            };
+            reader.readAsText(file);
+        };
+
+        function createBucket(id, name, color) {
+            const bucketsContainer = document.getElementById('buckets');
+            const bucketDiv = document.createElement('div');
+            bucketDiv.className = 'bucket';
+            bucketDiv.innerHTML = `<h2 style="color: ${color}">${name}</h2>`;
+            bucketDiv.id = `bucket-${id}`;
+            bucketsContainer.appendChild(bucketDiv);
+            buckets[id] = { name: name, color: color, items: [] };
+
+            bucketDiv.ondragover = (e) => e.preventDefault();
+            bucketDiv.ondrop = (e) => {
+                e.preventDefault();
+                const itemId = e.dataTransfer.getData('text');
+                const item = document.getElementById(itemId);
+                bucketDiv.appendChild(item);
+                updateBucketArrays();
+            };
+        }
+
+        function addItemToBucket(bucketId, itemText) {
+            const bucketDiv = document.getElementById(`bucket-${bucketId}`);
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            itemDiv.draggable = true;
+            itemDiv.id = `item-${Date.now()}-${buckets[bucketId].items.length}`;
+            const cleanedItemText = itemText.replace(/\s*🗑️\s*$/, '').trim();
+            itemDiv.innerHTML = `${cleanedItemText} <span class="trash" onclick="removeItem(this.parentNode)">🗑️</span>`;
+            itemDiv.ondragstart = (e) => {
+                e.dataTransfer.setData('text', e.target.id);
+            };
+            bucketDiv.appendChild(itemDiv);
+            buckets[bucketId].items.push(cleanedItemText);
+        }
+
+        function addItems() {
+            const input = document.getElementById('text-input');
+            const items = input.value.split('\n').filter(item => item.trim() !== '');
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.draggable = true;
+                itemDiv.id = `item-${Date.now()}-${index}`;
+                itemDiv.innerHTML = `${item} <span class="trash" onclick="removeItem(this.parentNode)">🗑️</span>`;
+                itemDiv.ondragstart = (e) => {
+                    e.dataTransfer.setData('text', e.target.id);
+                };
+                document.getElementById('new').appendChild(itemDiv);
+            });
+            input.value = '';
+            updateBucketArrays();
+        }
+
+        function removeItem(itemElement) {
+            itemElement.remove();
+            updateBucketArrays();
+        }
+
+        function updateBucketArrays() {
+            for (let id in buckets) {
+                buckets[id].items = Array.from(document.getElementById(`bucket-${id}`).getElementsByClassName('item'))
+                    .map(item => item.textContent);
+            }
+            localStorage.setItem('buckets', JSON.stringify(buckets));
+        }
+
+        function exportJSON() {
+            let exportData = [];
+            for (let [id, bucket] of Object.entries(buckets)) {
+                bucket.items.forEach(item => {
+                    exportData.push({
+                        label: parseInt(id),
+                        text: item.replace(/\s*🗑️\s*$/, '').trim()
+                    });
+                });
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "export.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function clearBucketContent(complete = false) {
+            if (complete) {
+                document.getElementById('buckets').innerHTML = '';
+                buckets = {};
+                localStorage.removeItem('buckets');
+            } else {
+                for (let id in buckets) {
+                    const bucketElement = document.getElementById(`bucket-${id}`);
+                    bucketElement.innerHTML = `<h2 style="color: ${buckets[id].color}">${buckets[id].name}</h2>`;
+                    buckets[id].items = [];
+                }
+                localStorage.setItem('buckets', JSON.stringify(buckets));
+            }
+        }
+
+        function clearNewContent() {
+            document.getElementById("new").innerHTML = '';
+        }
+    </script>
+</body>
+</html>
