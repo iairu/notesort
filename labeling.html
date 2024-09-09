@@ -66,12 +66,20 @@
             cursor: move;
             max-width: 170px;
             overflow: hidden;
+            font-size: 0.6em;
+            position: relative;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             line-clamp: 2;
             -webkit-box-orient: vertical;
             text-overflow: ellipsis;
-            font-size: 0.6em;
+            padding-right: 20px; /* Make space for the trash icon */
+        }
+        .item > .trash {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 1;
         }
         #input-area {
             margin-bottom: 20px;
@@ -125,8 +133,8 @@
 <body>
     <h1>Labeling Interface</h1>
     <div id="input-area">
-        <textarea id="text-input" placeholder="Enter text chunks here, one per line"></textarea>
-        <button onclick="addItems()">Add Items</button>
+        <textarea id="text-input" placeholder="Enter paragraphs here divided by empty lines."></textarea>
+        <button onclick="addItems()">Add Paragraphs</button>
     </div>
     <div class="bucket-container">
         <div id="new"></div>
@@ -152,6 +160,19 @@
                 value.items.forEach(item => addItemToBucket(key, item));
             }
         }
+
+        const savedNewItems = JSON.parse(localStorage.getItem('newItems') || '[]');
+        savedNewItems.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            itemDiv.draggable = true;
+            itemDiv.id = `item-${Date.now()}-${index}`;
+            itemDiv.innerHTML = `${item} <span class="trash" onclick="removeItem(this.parentNode)">🗑️</span>`;
+            itemDiv.ondragstart = (e) => {
+                e.dataTransfer.setData('text', e.target.id);
+            };
+            document.getElementById('new').appendChild(itemDiv);
+        });
         
         document.getElementById('import-json').onchange = function(event) {
             const file = event.target.files[0];
@@ -205,7 +226,7 @@
 
         function addItems() {
             const input = document.getElementById('text-input');
-            const items = input.value.split('\n').filter(item => item.trim() !== '');
+            const items = input.value.split(/\n\s*\n/).filter(item => item.trim() !== '');
             items.forEach((item, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'item';
@@ -217,8 +238,8 @@
                 };
                 document.getElementById('new').appendChild(itemDiv);
             });
-            input.value = '';
             updateBucketArrays();
+            input.value = '';
         }
 
         function removeItem(itemElement) {
@@ -232,6 +253,10 @@
                     .map(item => item.textContent);
             }
             localStorage.setItem('buckets', JSON.stringify(buckets));
+            
+            const newItems = Array.from(document.getElementById('new').getElementsByClassName('item'))
+                .map(item => item.textContent.replace(/\s*🗑️\s*$/, '').trim());
+            localStorage.setItem('newItems', JSON.stringify(newItems));
         }
 
         function exportJSON() {
@@ -270,6 +295,7 @@
 
         function clearNewContent() {
             document.getElementById("new").innerHTML = '';
+            localStorage.removeItem('newItems');
         }
     </script>
 </body>
