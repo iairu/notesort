@@ -19,11 +19,11 @@ In this stage, we input a manually labeled dataset to the model for training, en
 1. Create `train_labels.json` manually in the following format:
    ```json
    {
-       "0": {"label": "poetry", "color": "#00FF00", "include": [], "exclude": []},
-       "1": {"label": "description", "color": "#FFA500", "include": [], "exclude": []},
-       "2": {"label": "spiritual", "color": "#FFD700", "include": ["god", "jesus", "religion"], "exclude": []},
-       "3": {"label": "sadness", "color": "#4169E1", "include": [], "exclude": []},
-       "4": {"label": "psychology", "color": "#800080", "include": [], "exclude": []}
+        "0": {"label": "poetry", "color": "#00FF00", "increase_if": [], "decrease_if": [], "must_have": []},
+        "1": {"label": "description", "color": "#FFA500", "increase_if": [], "decrease_if": [], "must_have": []},
+        "2": {"label": "spiritual", "color": "#FFD700", "increase_if": [], "decrease_if": [], "must_have": ["god",  "jesus", "religion"]},
+        "3": {"label": "sadness", "color": "#4169E1", "increase_if": [], "decrease_if": [], "must_have": []},
+        "4": {"label": "psychology", "color": "#800080", "increase_if": [], "decrease_if": [], "must_have": []}
    }
    ```
 
