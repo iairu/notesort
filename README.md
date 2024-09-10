@@ -50,6 +50,35 @@ After training the model, we use it to infer labels for an unlabeled dataset, wh
 
 3. Run `distilbert_infer.py` to execute the model. This will generate the output file `infer_output.json`.
 
+## Stage 3: Validation (Optional)
+
+In this stage, we validate the output of the inference process by comparing it to the original training data.
+
+### Required Files:
+- `train_input.json`
+- `infer_output.json`
+- `train_labels.json`
+
+### Steps:
+
+1. Ensure you have the required files from the previous stages.
+
+2. Run `distilbert_validate.py` to perform the validation. This script will:
+   - Compare the assigned labels in `infer_output.json` to the labels in `train_input.json`.
+   - Print any mistakes found during the comparison.
+   - Calculate and display metrics including precision, recall, and F1 score for the top label.
+   - Calculate and display overall metrics for all labels.
+   - Show the percentage of correct and incorrect predictions.
+
+3. Review the output, which will include:
+   - A list of mistakes (if any) showing the text, predicted label, and correct label.
+   - Top Label Metrics (Precision, Recall, F1 Score).
+   - Overall Metrics (Precision, Recall, F1 Score).
+   - Prediction Accuracy (percentage of correct and incorrect predictions).
+   - Total number of mistakes and total number of texts in the training dataset.
+
+This validation stage helps assess the model's performance and identify areas for improvement in the training process.
+
 ## Useful Links
 
 - [DistilBERT Documentation](https://huggingface.co/docs/transformers/model_doc/distilbert)
