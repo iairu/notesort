@@ -1,6 +1,8 @@
 import json
+import os
+import shutil
 from transformers import AutoTokenizer
-from datasets import DatasetDict, Dataset
+from datasets import Dataset
 from transformers import DataCollatorWithPadding
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 
@@ -14,43 +16,56 @@ num_labels = len(id2label)
 with open('train_input.json', 'r') as file:
     train_dataset = json.load(file)
 
-dataset = DatasetDict({
-    'train': Dataset.from_dict(train_dataset),
-    'validation': Dataset.from_dict(train_dataset),
-    'test': Dataset.from_dict(train_dataset)
-})
+# Convert the list of dictionaries to separate lists for text and labels
+train_dict = {
+    'text': [item['text'] for item in train_dataset],
+    'label': [item['label'] for item in train_dataset]
+}
 
-tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
+dataset = Dataset.from_dict(train_dict)
+
+tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased", clean_up_tokenization_spaces=True)
 def preprocess_function(examples):
-    return tokenizer(examples["text"], truncation=True)
+    return tokenizer(examples["text"], truncation=True, padding=True)
 tokenized_dataset = dataset.map(preprocess_function, batched=True)
 
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
+# Delete existing model if it exists
+output_dir = "trained_model_1"
+if os.path.exists(output_dir):
+    shutil.rmtree(output_dir)
+
 model = AutoModelForSequenceClassification.from_pretrained(
-    "distilbert/distilbert-base-uncased", num_labels=num_labels, id2label=id2label, label2id=label2id
+    "distilbert/distilbert-base-uncased", 
+    num_labels=num_labels, 
+    id2label=id2label, 
+    label2id=label2id,
+    problem_type="single_label_classification"
 )
 
 training_args = TrainingArguments(
-    output_dir="trained_model_1",
-    eval_strategy="epoch",
+    output_dir=output_dir,
     save_strategy="epoch",
+    save_total_limit=1,  # Keep only the last checkpoint
     learning_rate=2e-5,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    num_train_epochs=2,
-    weight_decay=0.01,
-    load_best_model_at_end=True
+    per_device_train_batch_size=8,
+    num_train_epochs=16,
+    weight_decay=0.01
 )
 
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=tokenized_dataset["train"],
-    eval_dataset=tokenized_dataset["test"],
+    train_dataset=tokenized_dataset,
     data_collator=data_collator,
-    tokenizer=tokenizer,
-    compute_metrics=compute_metrics
+    tokenizer=tokenizer
 )
 
 trainer.train()
+
+# Move the last checkpoint to the main save directory and remove the subfolder
+last_checkpoint_dir = max([os.path.join(output_dir, d) for d in os.listdir(output_dir) if d.startswith("checkpoint-")], key=os.path.getmtime)
+for filename in os.listdir(last_checkpoint_dir):
+    shutil.move(os.path.join(last_checkpoint_dir, filename), output_dir)
+shutil.rmtree(last_checkpoint_dir)
