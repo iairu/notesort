@@ -1,0 +1,23 @@
+Here are some suggestions:
+
+- show validation output in a friendly manner using gui prompt by parsing the stdout, here is a sample (mistakes may not exist in the output, labels may be different):
+...
+
+- have the ability to show inferrence output (infer_output.json) in a friendly manner using gui prompt, here is a sample:
+...
+
+- convert labeling.html to python GUI
+
+- make GUI more user friendly with styling similar to balenaEtcher
+
+- remove trained_model_1 folder after closing training window if it is empty and if any backups exist in such case rename them accordingly
+
+- add scrollbars to textareas
+
+- custom icon
+
+- custom logo
+
+- additional text descriptions around the interface
+
+- license button in menubar with info about DistilBERT and other libraries used
