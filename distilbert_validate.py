@@ -4,6 +4,7 @@
 # it will also print the overall precision, recall, and f1 score
 
 import json
+from collections import Counter
 from sklearn.metrics import precision_recall_fscore_support
 import warnings
 
@@ -21,78 +22,97 @@ with open('infer_output.json', 'r') as file:
 with open('train_labels.json', 'r') as file:
     label_mapping = {str(k): v['label'] for k, v in json.load(file).items()}
 
-# compare the labels and print mistakes
-true_labels = []
-predicted_labels = []
-mistakes = []
-
 # Create a dictionary to map text to labels from train_dataset
 train_text_to_label = {item['text']: label_mapping[str(item['label'])] for item in train_dataset}
 
-for infer_item in infer_dataset:
-    text = infer_item['text']
-    if text in train_text_to_label:
-        true_label = train_text_to_label[text]
-        predicted_label = get_top_label(infer_item)
-        true_labels.append(true_label)
-        predicted_labels.append(predicted_label)
-        
-        if true_label != predicted_label:
-            text_preview = text[:100] + ('...' if len(text) > 100 else '')
-            mistakes.append((text_preview, predicted_label, true_label))
+# Count how many infer_dataset texts are in train_dataset
+matching_texts = sum(1 for item in infer_dataset if item['text'] in train_text_to_label)
+total_infer_texts = len(infer_dataset)
+total_train_texts = len(train_dataset)
 
-print("Mistakes:")
-for text, pred_label, true_label in mistakes:
-    print(f"Text: {text}")
-    print(f"Predicted: {pred_label}")
-    print(f"Correct: {true_label}")
-    print()
+# If less than 50% of train_dataset texts are in infer_dataset, assume it's mostly unrelated
+if matching_texts / total_train_texts < 0.5:
+    print("\nMost of the inferred texts are not in the training dataset. Skipping detailed validation.")
+else:
+    print("\nMost of the inferred texts are in the training dataset. Proceeding with validation.")
+    
+    true_labels = []
+    predicted_labels = []
+    mistakes = []
 
-# calculate metrics
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predicted_labels, average='weighted', zero_division=0)
+    for infer_item in infer_dataset:
+        text = infer_item['text']
+        if text in train_text_to_label:
+            true_label = train_text_to_label[text]
+            predicted_label = get_top_label(infer_item)
+            true_labels.append(true_label)
+            predicted_labels.append(predicted_label)
+            
+            if true_label != predicted_label:
+                text_preview = text[:100] + ('...' if len(text) > 100 else '')
+                mistakes.append((text_preview, predicted_label, true_label))
 
-# print the results
-print("Top Label Metrics:")
-print(f"Precision: {precision:.4f}")
-print(f"Recall: {recall:.4f}")
-print(f"F1 Score: {f1:.4f}")
+    print("\nMistakes:")
+    for text, pred_label, true_label in mistakes:
+        print(f"Text: {text}")
+        print(f"Predicted: {pred_label}")
+        print(f"Correct: {true_label}")
+        print()
 
-# calculate overall metrics
-all_true_labels = []
-all_predicted_labels = []
+    # calculate metrics
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predicted_labels, average='weighted', zero_division=0)
 
-for infer_item in infer_dataset:
-    text = infer_item['text']
-    if text in train_text_to_label:
-        true_label = train_text_to_label[text]
-        if 'results' in infer_item:
-            predicted_labels = [result['label'] for result in infer_item['results']]
-        else:
-            predicted_labels = [infer_item['label']]
-        
-        all_true_labels.extend([true_label] * len(predicted_labels))
-        all_predicted_labels.extend(predicted_labels)
+    # print the results
+    print("Top Label Metrics:")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1 Score: {f1:.4f}")
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(all_true_labels, all_predicted_labels, average='weighted', zero_division=0)
+    # calculate overall metrics
+    all_true_labels = []
+    all_predicted_labels = []
 
-print("\nOverall Metrics:")
-print(f"Precision: {overall_precision:.4f}")
-print(f"Recall: {overall_recall:.4f}")
-print(f"F1 Score: {overall_f1:.4f}")
+    for infer_item in infer_dataset:
+        text = infer_item['text']
+        if text in train_text_to_label:
+            true_label = train_text_to_label[text]
+            if 'results' in infer_item:
+                predicted_labels = [result['label'] for result in infer_item['results']]
+            else:
+                predicted_labels = [infer_item['label']]
+            
+            all_true_labels.extend([true_label] * len(predicted_labels))
+            all_predicted_labels.extend(predicted_labels)
 
-# Calculate the percentage of mistakes compared to the amount of text in train dataset
-total_train_texts = len(train_text_to_label)
-total_mistakes = len(mistakes)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        overall_precision, overall_recall, overall_f1, _ = precision_recall_fscore_support(all_true_labels, all_predicted_labels, average='weighted', zero_division=0)
 
-mistake_percentage = (total_mistakes / total_train_texts) * 100
-correct_percentage = 100 - mistake_percentage
+    print("\nOverall Metrics:")
+    print(f"Precision: {overall_precision:.4f}")
+    print(f"Recall: {overall_recall:.4f}")
+    print(f"F1 Score: {overall_f1:.4f}")
 
-print("\nPrediction Accuracy:")
-print(f"Correct: {correct_percentage:.2f}%")
-print(f"Incorrect: {mistake_percentage:.2f}%")
-print(f"Total mistakes: {total_mistakes}")
-print(f"Total texts in train dataset: {total_train_texts}")
+    # Calculate the percentage of mistakes compared to the amount of text in train dataset
+    total_mistakes = len(mistakes)
+
+    mistake_percentage = (total_mistakes / total_train_texts) * 100
+    correct_percentage = 100 - mistake_percentage
+
+    print("\nPrediction Accuracy:")
+    print(f"Correct: {correct_percentage:.2f}%")
+    print(f"Incorrect: {mistake_percentage:.2f}%")
+    print(f"Total mistakes: {total_mistakes}")
+    print(f"Total texts in train dataset: {total_train_texts}")
+
+# Count occurrences of each label
+label_counter = Counter(get_top_label(item) for item in infer_dataset)
+
+# Calculate and display label percentages
+total_labels = sum(label_counter.values())
+print("\nLabel Percentages:")
+for label, count in label_counter.most_common():
+    percentage = (count / total_labels) * 100
+    print(f"{label}: {percentage:.2f}%")
