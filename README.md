@@ -30,10 +30,12 @@ In this stage, we input a manually labeled dataset to the model for training, en
 2. Prepare text with paragraphs for manual sorting (training).
 
 3. Use `labeling.html` to load `train_labels.json` and sort the paragraphs into buckets.
+   Launch command for Google Chrome: `chrome labeling.html`
 
 4. Export the buckets as `train_input.json`.
 
 5. Run `distilbert_train.py` to train the model on `train_input.json`. This will generate the model's directory. Note that the training is with validation/testing on the same data (edit the script yourself for improvements).
+   Launch command: `py distilbert_train.py`
 
 ## Stage 2: Inferred Dataset (Automated Labeling)
 
@@ -49,10 +51,21 @@ After training the model, we use it to infer labels for an unlabeled dataset, wh
 2. Input the text in a clear format into `infer_input.md`.
 
 3. Run `distilbert_infer.py` to execute the model. This will generate the output file `infer_output.json`.
+   Launch command: `py distilbert_infer.py [options]`
+
+   Available options:
+   - `-c` or `--no-normalize`: Do not normalize scores
+   - `-l` or `--top-label`: Only output the top label name
+
+   Example:
+   - To run with default settings: `py distilbert_infer.py`
+   - To run without score normalization: `py distilbert_infer.py -c`
+   - To output only the top label: `py distilbert_infer.py -l`
+   - To combine options: `py distilbert_infer.py -c -l`
 
 ## Stage 3: Validation (Optional)
 
-In this stage, we validate the output of the inference process by comparing it to the original training data.
+In this stage, we validate the output of the inference process by comparing it to the original training data and analyze the distribution of predicted labels.
 
 ### Required Files:
 - `train_input.json`
@@ -69,6 +82,8 @@ In this stage, we validate the output of the inference process by comparing it t
    - Calculate and display metrics including precision, recall, and F1 score for the top label.
    - Calculate and display overall metrics for all labels.
    - Show the percentage of correct and incorrect predictions.
+   - Calculate and display the percentage distribution of predicted labels.
+   Launch command: `py distilbert_validate.py`
 
 3. Review the output, which will include:
    - A list of mistakes (if any) showing the text, predicted label, and correct label.
@@ -76,8 +91,9 @@ In this stage, we validate the output of the inference process by comparing it t
    - Overall Metrics (Precision, Recall, F1 Score).
    - Prediction Accuracy (percentage of correct and incorrect predictions).
    - Total number of mistakes and total number of texts in the training dataset.
+   - Label Percentages showing the distribution of predicted labels.
 
-This validation stage helps assess the model's performance and identify areas for improvement in the training process.
+This validation stage helps assess the model's performance, identify areas for improvement in the training process, and understand the distribution of labels in the inferred dataset.
 
 ## Useful Links
 
