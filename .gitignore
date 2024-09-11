@@ -3,4 +3,14 @@ infer_input.md
 infer_output.json
 train_input.json
 train_labels.json
+infer_input.md.bak
+infer_output.json.bak
+train_input.json.bak
+train_labels.json.bak
+infer_input*.md
+infer_output*.json
+train_input*.json
+train_labels*.json
 trained_model_1
+trained_model_1*
+installed.tmp
