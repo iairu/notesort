@@ -7,6 +7,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description="DistilBERT Inference Script")
 parser.add_argument('-c', '--no-normalize', action='store_true', help="Do not normalize scores")
 parser.add_argument('-l', '--top-label', action='store_true', help="Only output the top label name")
+parser.add_argument('-s', '--skip-long', action='store_true', help="Automatically skip paragraphs exceeding maximum length")
 args = parser.parse_args()
 
 # Load the classifier with top_k=None to get all label probabilities
@@ -23,16 +24,19 @@ results = []
 for i, paragraph in enumerate(tqdm(paragraphs, desc="Processing paragraphs"), start=1):
     if paragraph.strip():
         if len(paragraph) > 512:
-            print(f"Paragraph {i} with {len(paragraph)} characters exceeds maximum length of 512.")
-            user_input = input("Enter 'c' to continue to the next paragraph, or 'q' to quit: ")
-            if user_input.lower() == 'q':
-                print("Exiting program.")
-                exit()
-            elif user_input.lower() == 'c':
+            if args.skip_long:
                 continue
             else:
-                print("Invalid input. Continuing to next paragraph.")
-                continue
+                print(f"Paragraph {i} with {len(paragraph)} characters exceeds maximum length of 512.")
+                user_input = input("Enter 'c' to continue to the next paragraph, or 'q' to quit: ")
+                if user_input.lower() == 'q':
+                    print("Exiting program.")
+                    exit()
+                elif user_input.lower() == 'c':
+                    continue
+                else:
+                    print("Invalid input. Continuing to next paragraph.")
+                    continue
         
         classifications = classifier(paragraph)  # Get the list of all label probabilities
         # Adjust scores based on explicit words

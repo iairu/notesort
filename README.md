@@ -56,13 +56,15 @@ After training the model, we use it to infer labels for an unlabeled dataset, wh
    Available options:
    - `-c` or `--no-normalize`: Do not normalize scores
    - `-l` or `--top-label`: Only output the top label name
+   - `-s` or `--skip-long`: Automatically skip paragraphs exceeding maximum length
 
    Example:
    - To run with default settings: `py distilbert_infer.py`
    - To run without score normalization: `py distilbert_infer.py -c`
    - To output only the top label: `py distilbert_infer.py -l`
    - To combine options: `py distilbert_infer.py -c -l`
-
+   - To skip long paragraphs: `py distilbert_infer.py -s`
+   ß
 ## Stage 3: Validation (Optional)
 
 In this stage, we validate the output of the inference process by comparing it to the original training data and analyze the distribution of predicted labels.
