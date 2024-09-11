@@ -1,6 +1,7 @@
 from transformers import pipeline
 import json
 import argparse
+from tqdm import tqdm
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="DistilBERT Inference Script")
@@ -19,8 +20,20 @@ with open('infer_input.md', 'r') as file:
     paragraphs = file.read().split('\n\n')
 
 results = []
-for paragraph in paragraphs:
+for i, paragraph in enumerate(tqdm(paragraphs, desc="Processing paragraphs"), start=1):
     if paragraph.strip():
+        if len(paragraph) > 512:
+            print(f"Paragraph {i} with {len(paragraph)} characters exceeds maximum length of 512.")
+            user_input = input("Enter 'c' to continue to the next paragraph, or 'q' to quit: ")
+            if user_input.lower() == 'q':
+                print("Exiting program.")
+                exit()
+            elif user_input.lower() == 'c':
+                continue
+            else:
+                print("Invalid input. Continuing to next paragraph.")
+                continue
+        
         classifications = classifier(paragraph)  # Get the list of all label probabilities
         # Adjust scores based on explicit words
         for class_list in classifications:
