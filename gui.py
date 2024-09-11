@@ -6,7 +6,6 @@ import subprocess
 import sys
 import venv
 import shutil
-from tqdm import tqdm
 import webbrowser
 import threading
 import time
@@ -43,9 +42,9 @@ class NoteSort:
             progress_label.pack(pady=10)
             progress_bar = ttk.Progressbar(progress_window, length=300, mode='determinate')
             progress_bar.pack(pady=10)
-            
             packages_to_install = []
-            for i, package in enumerate(tqdm(packages, desc="Checking packages")):
+            for i, package in enumerate(packages):
+                progress_label.config(text=f"Checking package: {package}")
                 try:
                     __import__(package.split('==')[0])
                 except ImportError:
@@ -56,12 +55,11 @@ class NoteSort:
             if packages_to_install:
                 progress_label.config(text="Installing packages...")
                 progress_bar['value'] = 0
-                for i, package in enumerate(tqdm(packages_to_install, desc="Installing packages")):
-                    print(f"Installing {package}...")
+                for i, package in enumerate(packages_to_install):
+                    progress_label.config(text=f"Installing {package}...")
                     subprocess.check_call([os.path.join(venv_dir, 'bin', 'pip'), "install", package])
                     progress_bar['value'] = (i + 1) / len(packages_to_install) * 100
                     progress_window.update()
-                
                 # Create installed.tmp file after successful installation
                 with open('installed.tmp', 'w') as f:
                     f.write('Packages installed successfully')
